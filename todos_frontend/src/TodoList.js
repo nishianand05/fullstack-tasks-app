@@ -1,6 +1,8 @@
 import React, {Component} from 'react';
 import TodoItem from './TodoItem';
-const APIURL = '/api/todos';
+import TodoForm from './TodoForm';
+import * as apiCalls from './api';
+// const APIURL = '/api/todos/';
 
 class TodoList extends Component {
 	
@@ -10,6 +12,8 @@ class TodoList extends Component {
 		this.state = {
 			todos: []
 		}
+		
+		this.addTodo = this.addTodo.bind(this);
 	}
 	
 	componentDidMount(){
@@ -17,46 +21,54 @@ class TodoList extends Component {
 	}
 	
 	
-	loadTodos(){
-		fetch(APIURL)
-		.then(res => {
-			if(!res.ok){
-				if(res.status >= 400 && res.status < 500){
-					return res.json().then(data => {
-						let err = {errorMessage: data.message};
-						throw err;
-					});
-				} else {
-					let err = {errorMessage: 'Please try again later, server is not responding!'}
-					throw err;
-				}
-			}
-			
-			return res.json();
-		})
-		.then(todos => this.setState({todos}))
+	async loadTodos(){
+		let todos = await apiCalls.getTodos();
+		this.setState({todos})
 	}
 	
+	async addTodo(val){
+		let newTodo = await apiCalls.createTodo(val);
+		this.setState({todos: [...this.state.todos, newTodo]})
+	}
+	
+	async deleteTodo(id){
+		await apiCalls.removeTodo(id);
+		const todos = this.state.todos.filter(todo => todo._id !== id);
+		this.setState({todos: todos});
+	}
+	
+	async toggleTodo(todo){
+		
+		let updatedTodo = await apiCalls.updateTodo(todo);
+		
+		const todos = this.state.todos.map(t => (t._id === updatedTodo._id) ? {...t, completed: !t.completed} : t)
+		this.setState({todos: todos});
+	}
 	
 	render(){
 		const todos = this.state.todos.map(t => (
 			<TodoItem
 				key={t._id} 
 				{...t}
+				onDelete={this.deleteTodo.bind(this, t._id)}
+				onToggle={this.toggleTodo.bind(this, t)}
 			/>
 		));
 		
 		return(
 			<div>
-				<h1>Tasks</h1>
+				<header>
+					<h1><i className="fas fa-tasks"></i> Tasks</h1>
+					<h2>A single page todo list app</h2>
+				</header>
+				<TodoForm addTodo={this.addTodo}/>
 				<ul>
 					{todos}
 				</ul>
 			</div>
-			
-			
 		);
 	}
+	
 }
 
 export default TodoList;
